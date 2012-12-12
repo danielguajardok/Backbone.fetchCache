@@ -49,7 +49,13 @@ class window.Store
   # Save the current state of the **Store** to *localStorage*.
   save: ->
     localStorage.setItem @name, @records.join(',')
-  
+
+  setTime: ->
+  	localStorage.setItem @name+"_time", new Date().getTime()
+
+  getTime: ->
+  	localStorage.getItem @name+"_time"
+
   recordsOn: (key) ->
     store = localStorage.getItem(key)
     (store and store.split(',')) or []
@@ -186,7 +192,8 @@ onlineSync = Backbone.sync
 dualsync = (method, model, options) ->
   console.log 'dualsync', method, model, options
   
-  options.storeName = result(model.collection, 'url') || result(model, 'url')
+  # options.storeName = result(model.collection, 'url') || result(model, 'url')
+  options.storeName = (result(model.collection, "url") or result(model, "url")) + ((if options.data then "?" + options.data else ""))
   
   # execute only online sync
   return onlineSync(method, model, options) if result(model, 'remote') or result(model.collection, 'remote')
@@ -227,11 +234,21 @@ dualsync = (method, model, options) ->
           console.log 'getting local from', options.storeName
           success localsync(method, model, options)
 
-        onlineSync(method, model, options)
+        store = new Store options.storeName
+        now = new Date().getTime()
+        comparator = (if (model.collection) then ((if model.collection.cache then model.collection.cache.ttl or 0 else 0)) else ((if model.cache then model.cache.ttl or 0 else 0)))
+        console.log comparator
+        last_sync = store.getTime() or 0
+        if (now - last_sync) / (1000 * 60) >= comparator
+          store.setTime()
+          onlineSync method, model, options
+        else
+          success localsync(method, model, options)
 
     when 'create'
       options.success = (resp, status, xhr) ->
-        localsync(method, resp, options)
+        model.set resp
+        localsync(method, model, options)
         success(resp, status, xhr)
       options.error = (resp) ->
         options.dirty = true

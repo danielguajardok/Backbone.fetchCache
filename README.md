@@ -7,7 +7,7 @@ Fetch Cache is a plug and play extension for Backbone Collections that let your 
 
 This project is based con Backbone dualStorage. All requests are stored in localStorage for off-line access. This plugin use it for caching, keeping cached-content updated even wen you create update, or delete models of a collection. For more information on using dualStorage plugin, please refer to https://github.com/lucian1900/Backbone.dualStorage.
 
-Usage
+Fetch Cache Usage
 -----
 
 Include Backbone.dualStorage:
@@ -26,5 +26,6 @@ If you want to use cache:
 Credits
 -------
 
-Thanks to [Jerome Gravel-Niquet](https://github.com/jeromegn) for Backbone.localStorage
+Thanks to [Jerome Gravel-Niquet](https://github.com/jeromegn) for Backbone.localStorage.
+
 Thanks to [lucian1900](https://github.com/lucian1900/Backbone.dualStorage) for Backbone.dualStorage 

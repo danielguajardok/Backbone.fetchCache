@@ -5,7 +5,7 @@ Backbone Fetch Cache v0.1
 
 Fetch Cache is a plug and play extension for Backbone Collections that let your application access cached content of a URL until the TTL is expired.
 
-This project is based con Backbone dualStorage. All requests are stored in localStorage for off-line access. This plugin use it for caching, keeping cached-content updated even wen you create update, or delete models of a collection. For more information on using dualStorage plugin, please refer to https://github.com/lucian1900/Backbone.dualStorage.
+This project is based con Backbone dualStorage. All requests are stored in localStorage for off-line access. This plugin use it for caching, keeping cached-content updated even when you create update, or delete models of a collection. For more information on using dualStorage plugin, please refer to https://github.com/lucian1900/Backbone.dualStorage.
 
 Fetch Cache Usage
 -----

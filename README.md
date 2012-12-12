@@ -26,4 +26,5 @@ If you want to use cache:
 Credits
 -------
 
-Thanks to [Jerome Gravel-Niquet](https://github.com/jeromegn) for Backbone.dualStorage
+Thanks to [Jerome Gravel-Niquet](https://github.com/jeromegn) for Backbone.localStorage
+Thanks to [lucian1900](https://github.com/lucian1900/Backbone.dualStorage) for Backbone.dualStorage 

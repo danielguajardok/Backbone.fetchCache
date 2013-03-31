@@ -1,8 +1,10 @@
-'use strict'
+###
+Backbone dualStorage Adapter v1.0.1
 
-# A simple module to replace `Backbone.sync` with *localStorage*-based
-# persistence. Models are given GUIDS, and saved into a JSON object. Simple
-# as that.
+A simple module to replace `Backbone.sync` with *localStorage*-based
+persistence. Models are given GUIDS, and saved into a JSON object. Simple
+as that.
+###
 
 # Make it easy for collections to sync dirty and destroyed records
 # Simply call collection.syncDirtyAndDestroyed()
@@ -49,12 +51,12 @@ class window.Store
   # Save the current state of the **Store** to *localStorage*.
   save: ->
     localStorage.setItem @name, @records.join(',')
-
+  
   setTime: ->
-  	localStorage.setItem @name+"_time", new Date().getTime()
+    localStorage.setItem @name+"_time", new Date().getTime()
 
   getTime: ->
-  	localStorage.getItem @name+"_time"
+    localStorage.getItem @name+"_time"
 
   recordsOn: (key) ->
     store = localStorage.getItem(key)
@@ -63,7 +65,6 @@ class window.Store
   dirty: (model) ->
     dirtyRecords = @recordsOn @name + '_dirty'
     if not _.include(dirtyRecords, model.id.toString())
-      console.log 'dirtying', model
       dirtyRecords.push model.id
       localStorage.setItem @name + '_dirty', dirtyRecords.join(',')
     model
@@ -72,7 +73,6 @@ class window.Store
     store = "#{@name}_#{from}"
     dirtyRecords = @recordsOn store
     if _.include dirtyRecords, model.id.toString()
-      console.log 'cleaning', model.id
       localStorage.setItem store, _.without(dirtyRecords, model.id.toString()).join(',')
     model
     
@@ -86,12 +86,12 @@ class window.Store
   # Add a model, giving it a (hopefully)-unique GUID, if it doesn't already
   # have an id of it's own.
   create: (model) ->
-    console.log 'creating', model, 'in', @name
     if not _.isObject(model) then return model
     #if model.attributes? then model = model.attributes #removed to fix issue 14
     if not model.id
       model.id = @generateId()
-      model.set model.idAttribute, model.id
+      if (model.set) 
+        model.set model.idAttribute, model.id
     localStorage.setItem @name + @sep + model.id, JSON.stringify(model)
     @records.push model.id.toString()
     @save()
@@ -99,7 +99,6 @@ class window.Store
 
   # Update a model by replacing its copy in `this.data`.
   update: (model) ->
-    console.log 'updating', model, 'in', @name
     localStorage.setItem @name + @sep + model.id, JSON.stringify(model)
     if not _.include(@records, model.id.toString())
       @records.push model.id.toString()
@@ -117,24 +116,36 @@ class window.Store
 
   # Retrieve a model from `this.data` by id.
   find: (model) ->
-    console.log 'finding', model, 'in', @name
     JSON.parse localStorage.getItem(@name + @sep + model.id)
 
   # Return the array of all models currently in storage.
   findAll: ->
-    console.log 'findAlling'
     for id in @records
       JSON.parse localStorage.getItem(@name + @sep + id)
 
   # Delete a model from `this.data`, returning it.
   destroy: (model) ->
-    console.log 'trying to destroy', model, 'in', @name
     localStorage.removeItem @name + @sep + model.id
     @records = _.reject(@records, (record_id) ->
       record_id is model.id.toString()
     )
     @save()
     model
+
+callbackTranslator =
+  needsTranslation: Backbone.VERSION == '0.9.10'
+
+  forBackboneCaller: (callback) ->
+    if @needsTranslation
+      (model, resp, options) -> callback.call null, resp
+    else
+      callback
+
+  forDualstorageCaller: (callback, model, options) ->
+    if @needsTranslation
+      (resp) -> callback.call null, model, resp, options
+    else
+      callback
 
 # Override `Backbone.sync` to use delegate to the model or collection's
 # *localStorage* property, which should be an instance of `Store`.
@@ -160,7 +171,7 @@ localsync = (method, model, options) ->
       if options.dirty
         store.destroyed(model)
       else
-        if model.id.toString().length == 36 
+        if model.id.toString().length == 36
           store.clean(model, 'dirty')
         else
           store.clean(model, 'destroyed')
@@ -187,13 +198,19 @@ parseRemoteResponse = (object, response) ->
   if not (object and object.parseBeforeLocalSave) then return response
   if _.isFunction(object.parseBeforeLocalSave) then object.parseBeforeLocalSave(response)
 
-onlineSync = Backbone.sync
+backboneSync = Backbone.sync
+
+onlineSync = (method, model, options) ->
+  options.success = callbackTranslator.forBackboneCaller(options.success)
+  options.error = callbackTranslator.forBackboneCaller(options.error)
+  backboneSync(method, model, options)
 
 dualsync = (method, model, options) ->
-  console.log 'dualsync', method, model, options
   
   # options.storeName = result(model.collection, 'url') || result(model, 'url')
   options.storeName = (result(model.collection, "url") or result(model, "url")) + ((if options.data then "?" + options.data else ""))
+  options.success = callbackTranslator.forDualstorageCaller(options.success, model, options)
+  options.error = callbackTranslator.forDualstorageCaller(options.error, model, options)
   
   # execute only online sync
   return onlineSync(method, model, options) if result(model, 'remote') or result(model.collection, 'remote')
@@ -212,18 +229,15 @@ dualsync = (method, model, options) ->
   switch method
     when 'read'
       if localsync('hasDirtyOrDestroyed', model, options)
-        console.log "can't clear", options.storeName, "require sync dirty data first"
         success localsync(method, model, options)
       else
         options.success = (resp, status, xhr) ->
-          console.log 'got remote', resp, 'putting into', options.storeName
           resp = parseRemoteResponse(model, resp)
           
           localsync('clear', model, options) unless options.add
           
           if _.isArray resp
             for i in resp
-              console.log 'trying to store', i
               localsync('create', i, options)
           else
             localsync('create', resp, options)
@@ -231,9 +245,9 @@ dualsync = (method, model, options) ->
           success(resp, status, xhr)
         
         options.error = (resp) ->
-          console.log 'getting local from', options.storeName
           success localsync(method, model, options)
 
+        # onlineSync(method, model, options)
         store = new Store options.storeName
         now = new Date().getTime()
         comparator = (if (model.collection) then ((if model.collection.cache then model.collection.cache.ttl or 0 else 0)) else ((if model.cache then model.cache.ttl or 0 else 0)))
@@ -248,7 +262,7 @@ dualsync = (method, model, options) ->
     when 'create'
       options.success = (resp, status, xhr) ->
         model.set resp
-        localsync(method, model, options)
+        localsync(method, resp, options)
         success(resp, status, xhr)
       options.error = (resp) ->
         options.dirty = true
@@ -272,7 +286,7 @@ dualsync = (method, model, options) ->
         onlineSync('create', model, options)
       else
         options.success = (resp, status, xhr) ->
-          success localsync(method, model, options)
+          success localsync(method, model, options).attributes
         options.error = (resp) ->
           options.dirty = true
           success localsync(method, model, options)

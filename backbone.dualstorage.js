@@ -114,7 +114,9 @@
       }
       if (!model.id) {
         model.id = this.generateId();
-        model.set(model.idAttribute, model.id);
+        if (model.set) {
+          model.set(model.idAttribute, model.id);  
+        }
       }
       localStorage.setItem(this.name + this.sep + model.id, JSON.stringify(model));
       this.records.push(model.id.toString());
@@ -342,7 +344,7 @@
           return onlineSync('create', model, options);
         } else {
           options.success = function(resp, status, xhr) {
-            return success(localsync(method, model, options));
+            return success(localsync(method, model, options).attributes);
           };
           options.error = function(resp) {
             options.dirty = true;

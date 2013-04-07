@@ -262,7 +262,7 @@ dualsync = (method, model, options) ->
     when 'create'
       options.success = (resp, status, xhr) ->
         model.set resp
-        localsync(method, resp, options)
+        localsync(method, model, options)
         success(resp, status, xhr)
       options.error = (resp) ->
         options.dirty = true
